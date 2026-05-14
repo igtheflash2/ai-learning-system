@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.venv*/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+
+# Temp
+temp_output/
+
+# Generated docs (can be regenerated)
+*.docx
+*.png
+*.xmind
+
+# OS
+.DS_Store
+Thumbs.db

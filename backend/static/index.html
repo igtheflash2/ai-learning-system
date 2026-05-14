@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI学习资料生成工作台 · 软考架构设计师</title>
+<link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+<!-- ====== 导航栏 ====== -->
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="切换侧边栏">☰</button>
+    <a class="navbar-brand" href="#">
+      <div class="navbar-logo">📚</div>
+      <div>
+        <div class="navbar-title">AI学习资料生成工作台</div>
+        <div class="navbar-subtitle">软考系统架构设计师 · 全流程自动化</div>
+      </div>
+    </a>
+  </div>
+  <div class="navbar-actions">
+    <div class="navbar-status">
+      <span class="status-dot idle" id="statusDot"></span>
+      <span id="statusText">就绪</span>
+    </div>
+    <button class="btn btn-icon" onclick="toggleDarkMode()" title="切换暗黑模式" id="darkModeBtn">☀️</button>
+  </div>
+</nav>
+
+<!-- ====== 侧边栏遮罩 ====== -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- ====== 侧边栏 ====== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+
+    <!-- 运行模式 -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">⚙️ 运行模式</div>
+      <div class="form-group">
+        <select class="form-select" id="runMode" onchange="updateConfig()">
+          <option value="api">API 模式（AI 深度加工）</option>
+          <option value="local">本地模式（零 API 成本）</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- API 配置 -->
+    <div class="sidebar-section" id="apiConfigSection">
+      <div class="sidebar-section-title">🔑 API 配置</div>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <input class="form-input" type="password" id="apiKey" placeholder="sk-..." onchange="updateConfig()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Base URL</label>
+        <input class="form-input" id="baseUrl" placeholder="https://api.deepseek.com" onchange="updateConfig()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">模型名称</label>
+        <input class="form-input" id="modelName" placeholder="deepseek-chat" onchange="updateConfig()">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Max Tokens</label>
+          <input class="form-input" type="number" id="maxTokens" min="1000" max="128000" step="1000" onchange="updateConfig()">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="verifyBtn" onclick="saveAndVerifyConfig()" style="width:100%;margin-top:8px;">
+        💾 保存并验证
+      </button>
+      <div id="apiStatus"></div>
+    </div>
+
+    <!-- 生成策略 -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">📋 生成策略</div>
+      <div class="form-group">
+        <select class="form-select" id="generationMode" onchange="updateConfig()">
+          <option value="完整模式">完整模式（一次性）</option>
+          <option value="逐章模式">逐章模式（分章处理）</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 生成偏好 -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">🎯 生成偏好</div>
+      <div class="form-group">
+        <label class="form-label">重点范围</label>
+        <input class="form-input" id="focusAreas" value="全部章节" onchange="updateConfig()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">详细程度</label>
+        <select class="form-select" id="detailLevel" onchange="updateConfig()">
+          <option value="精简">精简</option>
+          <option value="标准" selected>标准</option>
+          <option value="详细">详细</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <label class="form-checkbox">
+          <input type="checkbox" id="includeMnemonics" checked onchange="updateConfig()"> 记忆口诀
+        </label>
+        <label class="form-checkbox">
+          <input type="checkbox" id="includeExercises" checked onchange="updateConfig()"> 真题演练
+        </label>
+      </div>
+    </div>
+
+    <!-- 底部信息 -->
+    <div style="text-align:center;padding:12px 0 4px;font-size:0.72rem;color:var(--text-muted);">
+      📚 AI大模型多文件综合分析 · 学习资料生成工具<br>
+      v2.0 · HTML 全交互版
+    </div>
+  </div>
+</aside>
+
+<!-- ====== 主内容 ====== -->
+<main class="main-content" id="mainContent">
+
+  <!-- 标签页 -->
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="tab-material" onclick="switchTab('tab-material')">📁 素材管理</button>
+    <button class="tab-btn" data-tab="tab-generate" onclick="switchTab('tab-generate')">⚡ 执行生成</button>
+    <button class="tab-btn" data-tab="tab-results" onclick="switchTab('tab-results')">📥 结果下载</button>
+    <button class="tab-btn" data-tab="tab-prompts" onclick="switchTab('tab-prompts')">🔧 提示词工作台</button>
+    <button class="tab-btn" data-tab="tab-browser" onclick="switchTab('tab-browser')">📂 知识库浏览器</button>
+  </div>
+
+  <!-- ====== Tab 1: 素材管理 ====== -->
+  <div class="tab-content active" id="tab-material">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📁 选择已有素材</div>
+          <div class="card-subtitle">选择需要处理的章节，卡片点击切换</div>
+        </div>
+        <div>
+          <span class="badge badge-primary" id="selectedCount">已选 0 个章节</span>
+        </div>
+      </div>
+      <div id="chapterGrid" class="chapter-grid">
+        <div class="empty-state"><div class="empty-state-icon">📂</div><div class="empty-state-text">加载中...</div></div>
+      </div>
+      <div class="quick-actions">
+        <button class="btn btn-sm btn-secondary" onclick="selectAllChapters()">✅ 全选</button>
+        <button class="btn btn-sm btn-secondary" onclick="deselectAllChapters()">❌ 全不选</button>
+        <button class="btn btn-sm btn-secondary" onclick="selectFirst5()">前5章</button>
+        <button class="btn btn-sm btn-secondary" onclick="invertSelection()">🔄 反选</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📤 上传新资料</div>
+          <div class="card-subtitle">上传 PDF 课件，自动 OCR 加入知识库</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <input class="form-input" type="file" id="pdfUpload" accept=".pdf" multiple onchange="uploadPDFs(this.files)">
+      </div>
+      <div id="uploadProgress"></div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-secondary" onclick="batchOCR()">📥 批量 OCR: input/ → output_md</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📤 上传 Word 文档</div>
+          <div class="card-subtitle">上传 .doc / .docx，自动提取为 Markdown</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <input class="form-input" type="file" id="wordUpload" accept=".doc,.docx" multiple onchange="uploadWords(this.files)">
+      </div>
+      <div id="wordUploadProgress"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📤 上传 Excel 表格</div>
+          <div class="card-subtitle">上传 .xls / .xlsx，自动提取为 Markdown</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <input class="form-input" type="file" id="excelUpload" accept=".xls,.xlsx" multiple onchange="uploadExcels(this.files)">
+      </div>
+      <div id="excelUploadProgress"></div>
+    </div>
+  </div>
+
+  <!-- ====== Tab 2: 执行生成 ====== -->
+  <div class="tab-content" id="tab-generate">
+    <!-- Pipeline 进度 -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📊 Pipeline 进度</div>
+        </div>
+        <span class="badge" id="pipelineTotal">0/5 阶段</span>
+      </div>
+      <div class="pipeline-steps" id="pipelineSteps">
+        <div class="pipeline-step" data-step="local">
+          <div class="pipeline-icon">🧹</div>
+          <span class="pipeline-label">本地清洗</span>
+          <span class="pipeline-status">未执行</span>
+        </div>
+        <div class="pipeline-step" data-step="ai_guide">
+          <div class="pipeline-icon">📝</div>
+          <span class="pipeline-label">AI 学习资料</span>
+          <span class="pipeline-status">未执行</span>
+        </div>
+        <div class="pipeline-step" data-step="mindmap">
+          <div class="pipeline-icon">🧠</div>
+          <span class="pipeline-label">AI 思维导图</span>
+          <span class="pipeline-status">未执行</span>
+        </div>
+        <div class="pipeline-step" data-step="docx">
+          <div class="pipeline-icon">📝</div>
+          <span class="pipeline-label">Word 输出</span>
+          <span class="pipeline-status">未执行</span>
+        </div>
+        <div class="pipeline-step" data-step="png">
+          <div class="pipeline-icon">🖼️</div>
+          <span class="pipeline-label">PNG 渲染</span>
+          <span class="pipeline-status">未执行</span>
+        </div>
+      </div>
+      <div class="progress-bar" style="margin-top:12px;">
+        <div class="progress-fill" id="pipelineProgress" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- 内容统计 -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📈 内容统计</div>
+        </div>
+      </div>
+      <div class="metrics-grid" id="statsGrid">
+        <div class="metric-card">
+          <div class="metric-value" id="statLocalLen">—</div>
+          <div class="metric-label">本地清洗</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="statAiLen">—</div>
+          <div class="metric-label">AI 生成</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="statMindmapLen">—</div>
+          <div class="metric-label">思维导图</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🚀 执行操作</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <button class="btn btn-secondary btn-lg" onclick="runLocalCleaning()">🧹 本地清洗重组</button>
+        <button class="btn btn-primary btn-lg" onclick="runAIGuide()">📝 AI 学习资料</button>
+        <button class="btn btn-primary btn-lg" onclick="runAIMindmap()">🧠 AI 思维导图</button>
+        <button class="btn btn-success btn-lg" onclick="runFullPipeline()">🚀 一键全链路</button>
+      </div>
+    </div>
+
+    <!-- 流式输出 -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📋 执行日志 / 流式输出</div>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="clearLogs()">清空</button>
+      </div>
+      <div class="stream-output" id="streamOutput">
+        <span style="color:var(--text-muted);">等待操作...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== Tab 3: 结果下载 ====== -->
+  <div class="tab-content" id="tab-results">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📊 AI vs 本地结果对比</div>
+        </div>
+      </div>
+      <div id="comparisonArea">
+        <div class="empty-state">
+          <div class="empty-state-icon">📄</div>
+          <div class="empty-state-text">请在「执行生成」中先生成内容</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📄 学习资料 MD</div>
+        </div>
+        <div id="studyGuidePreview" style="max-height:300px;overflow-y:auto;font-size:0.85rem;line-height:1.6;">
+          <span style="color:var(--text-muted);">暂无内容</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-primary btn-sm" onclick="downloadMD()">⬇️ 下载 .md</button>
+          <button class="btn btn-secondary btn-sm" onclick="convertToDocx()">📝 转为 Word</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧠 思维导图 MD</div>
+        </div>
+        <div id="mindmapPreview" style="max-height:300px;overflow-y:auto;font-size:0.85rem;line-height:1.6;">
+          <span style="color:var(--text-muted);">暂无内容</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-primary btn-sm" onclick="downloadMindmapMD()">⬇️ 下载 .md</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 Word / 🖼️ PNG</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <span class="badge" id="docxStatus">📝 Word: 未生成</span>
+        </div>
+        <div style="margin-bottom:12px;">
+          <span class="badge" id="pngStatus">🖼️ PNG: 未生成</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="downloadDocx()">⬇️ 下载 .docx</button>
+          <button class="btn btn-primary btn-sm" onclick="downloadPNG()">⬇️ 下载 .png</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== Tab 4: 提示词工作台 ====== -->
+  <div class="tab-content" id="tab-prompts">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🔧 提示词工作台</div>
+          <div class="card-subtitle">浏览、编辑、预览提示词模板，修改后实时生效</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">选择模板</label>
+          <select class="form-select" id="promptSelector" onchange="loadPrompt()"></select>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:8px;">
+          <button class="btn btn-secondary" onclick="resetPrompt()">🔄 重置为默认</button>
+          <button class="btn btn-success" onclick="savePrompt()">💾 保存修改</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea class="form-textarea" id="promptEditor" rows="16" style="font-family:var(--font-mono);font-size:0.82rem;"></textarea>
+      </div>
+
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;font-weight:600;color:var(--primary);">👁️ 预览渲染效果</summary>
+        <pre id="promptPreview" style="margin-top:8px;max-height:300px;">点击查看预览</pre>
+      </details>
+
+      <hr class="divider">
+
+      <div style="font-weight:600;margin-bottom:8px;">🤖 AI 辅助修改</div>
+      <div class="form-group">
+        <textarea class="form-textarea" id="promptModRequest" rows="2" placeholder="例如：让语气更专业严谨 / 增加考情分析字段 / 强调历年真题权重..." style="font-size:0.85rem;"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="aiEditPrompt()">🤖 生成 AI 修改建议</button>
+      <div id="aiSuggestionArea" style="display:none;margin-top:16px;">
+        <div class="card-header" style="margin-bottom:8px;">
+          <div class="card-title">📝 AI 修改建议</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">修改前</div>
+            <pre id="aiSuggestionBefore" style="max-height:300px;font-size:0.75rem;"></pre>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">修改后</div>
+            <pre id="aiSuggestionAfter" style="max-height:300px;font-size:0.75rem;"></pre>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-success" onclick="applyAISuggestion()">✅ 应用修改到模板</button>
+          <button class="btn btn-secondary" onclick="dismissAISuggestion()">🗑️ 丢弃建议</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div style="font-weight:600;margin-bottom:8px;">📚 基于全部知识库生成模板</div>
+      <div class="form-group">
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 8px 0;">
+          自动扫描知识库中所有 Markdown 素材文件，调用 AI 综合分析后生成高质量的提示词模板，并保存到当前选中的模板文件中。
+        </p>
+      </div>
+      <button class="btn btn-primary" id="genFromKBBtn" onclick="generatePromptFromKB()">📚 AI 基于全部知识库生成模板</button>
+      <div id="genFromKBStatus" style="margin-top:8px;font-size:0.8rem;"></div>
+      <div id="genFromKBPreviewArea" style="display:none;margin-top:12px;">
+        <details>
+          <summary style="cursor:pointer;font-weight:600;color:var(--primary);">👁️ 查看生成模板预览</summary>
+          <pre id="genFromKBPreview" style="margin-top:8px;max-height:300px;font-size:0.75rem;overflow:auto;"></pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== Tab 5: 知识库浏览器 ====== -->
+  <div class="tab-content" id="tab-browser">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📂 知识库浏览器</div>
+          <div class="card-subtitle">预览、编辑、删除知识库 Markdown 文件</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;">
+        <div>
+          <div class="form-group">
+            <select class="form-select" id="kbFileSelector" size="15" style="font-size:0.82rem;" onchange="loadKBFile()"></select>
+          </div>
+          <button class="btn btn-danger btn-sm btn-block" onclick="deleteKBFile()">🗑️ 删除选中文件</button>
+        </div>
+        <div>
+          <textarea class="form-textarea" id="kbEditor" rows="20" style="font-family:var(--font-mono);font-size:0.82rem;"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-success" onclick="saveKBFile()">💾 保存更改</button>
+            <span id="kbFileInfo" style="font-size:0.75rem;color:var(--text-muted);align-self:center;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ====== Toast 容器 ====== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ====== JavaScript ====== -->
+<script src="static/js/app.js"></script>
+</body>
+</html>

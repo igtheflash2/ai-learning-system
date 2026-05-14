@@ -1,0 +1,1 @@
+cmd /k  D:\Python3-14\python.exe -m streamlit run  app.py
